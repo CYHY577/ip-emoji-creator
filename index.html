@@ -1,0 +1,1544 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="保持角色身份与画风一致的表情包 IP 创作工具">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>表情包 IP · 一致性创作台</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #F7F8FA;
+      --surface: #FFFFFF;
+      --border: #E5E7EB;
+      --text: #111827;
+      --text-2: #6B7280;
+      --text-3: #9CA3AF;
+      --accent: #6366F1;
+      --accent-h: #4F46E5;
+      --accent-l: #EEF2FF;
+      --base-c: #F59E0B;
+      --base-l: #FFFBEB;
+      --base-border: #FDE68A;
+      --err: #EF4444;
+      --err-l: #FEF2F2;
+      --ok: #10B981;
+      --ok-l: #ECFDF5;
+      --r: 12px;
+      --sh: 0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.05);
+      --sh-md: 0 4px 6px -1px rgba(0,0,0,.08),0 2px 4px -1px rgba(0,0,0,.05);
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ── Header ── */
+    #hdr {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      height: 56px;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    .hdr-left { display: flex; align-items: center; gap: 12px; }
+    .hdr-logo { font-size: 15px; font-weight: 700; letter-spacing: -.02em; }
+    .hdr-logo em { color: var(--accent); font-style: normal; }
+    .phase-tag {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 99px;
+      background: var(--accent-l);
+      color: var(--accent);
+      transition: all .2s;
+    }
+    .phase-tag.active {
+      background: var(--base-l);
+      color: #92400E;
+      border: 1px solid var(--base-border);
+    }
+    .hdr-right { display: flex; align-items: center; gap: 8px; }
+    #loading-indicator {
+      font-size: 12px;
+      color: var(--accent);
+      display: none;
+      align-items: center;
+      gap: 6px;
+    }
+    #loading-indicator.show { display: flex; }
+    .dot-pulse { display: flex; gap: 3px; }
+    .dot-pulse span {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    .dot-pulse span:nth-child(2) { animation-delay: .2s; }
+    .dot-pulse span:nth-child(3) { animation-delay: .4s; }
+    @keyframes pulse { 0%,80%,100% { transform: scale(.6); opacity:.4; } 40% { transform: scale(1); opacity:1; } }
+
+    /* ── Layout ── */
+    #layout { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 220px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    #sb-inner {
+      padding: 16px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .sb-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--text-3);
+    }
+    #base-img-wrap {
+      aspect-ratio: 1;
+      border-radius: 10px;
+      border: 2px dashed var(--border);
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+      transition: border-color .2s;
+    }
+    #base-img-wrap.set { border: 2px solid var(--base-c); }
+    #base-img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .base-pin {
+      position: absolute; top: 7px; left: 7px;
+      background: var(--base-c); color: #fff;
+      font-size: 10px; font-weight: 700;
+      padding: 2px 7px; border-radius: 5px;
+      display: flex; align-items: center; gap: 3px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.2);
+    }
+    #sb-empty { text-align: center; color: var(--text-2); font-size: 12px; padding: 8px 4px; }
+    #sb-empty .ico { font-size: 36px; display: block; margin-bottom: 8px; }
+    #base-desc {
+      font-size: 11px;
+      color: var(--text-2);
+      line-height: 1.6;
+      background: var(--base-l);
+      border: 1px solid var(--base-border);
+      border-radius: 7px;
+      padding: 8px 10px;
+      display: none;
+    }
+    .sb-divider { height: 1px; background: var(--border); }
+    #reset-btn {
+      width: 100%;
+      padding: 8px;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text-2);
+      cursor: pointer;
+      transition: all .15s;
+      display: none;
+      font-family: inherit;
+    }
+    #reset-btn:hover { border-color: var(--err); color: var(--err); background: var(--err-l); }
+
+    /* ── Main ── */
+    #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* ── History ── */
+    #history {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      scroll-behavior: smooth;
+    }
+
+    /* empty state */
+    #empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      gap: 12px;
+      color: var(--text-2);
+      padding: 40px 20px;
+    }
+    #empty-state .big-ico { font-size: 56px; line-height: 1; }
+    #empty-state h2 { font-size: 16px; font-weight: 600; color: var(--text); }
+    #empty-state p { font-size: 13px; text-align: center; max-width: 300px; }
+    .steps { display: flex; gap: 8px; margin-top: 4px; }
+    .step {
+      background: var(--accent-l);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 99px;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+      box-shadow: var(--sh);
+      animation: fadeUp .2s ease-out both;
+    }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+
+    .card.is-base { border-color: var(--base-c); box-shadow: 0 0 0 3px rgba(245,158,11,.12), var(--sh); }
+
+    .card-hdr {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      background: #FAFAFA;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .badge-candidate { background: var(--accent-l); color: var(--accent); }
+    .badge-expr { background: #F0FDF4; color: #166534; }
+    .badge-base { background: var(--base-l); color: #92400E; border: 1px solid var(--base-border); }
+    .badge-ref { background: var(--base-l); color: #92400E; border: 1px solid var(--base-border); }
+    .badge-identity { background: #FFF7ED; color: #9A3412; border: 1px solid #FDBA74; }
+    .badge-blocked { background: var(--err-l); color: var(--err); border: 1px solid #FECACA; }
+    .card-label {
+      flex: 1;
+      font-size: 12px;
+      color: var(--text-2);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .card-body { padding: 14px; display: flex; gap: 14px; align-items: flex-start; }
+
+    .img-wrap {
+      width: 148px;
+      height: 148px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--bg);
+      flex-shrink: 0;
+      position: relative;
+    }
+    .img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .img-wrap.loading {
+      background: linear-gradient(90deg,#F0F0F0 25%,#E8E8E8 50%,#F0F0F0 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+    }
+    @keyframes shimmer { 0% { background-position:200% 0; } 100% { background-position:-200% 0; } }
+    .spin-wrap {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,.85);
+    }
+    .spinner {
+      width: 26px; height: 26px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .65s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .img-err {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 6px; height: 100%; font-size: 12px;
+      color: var(--err); background: var(--err-l);
+    }
+    .img-err .ico { font-size: 28px; }
+
+    .card-info { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+    .card-meta { font-size: 12px; color: var(--text-2); line-height: 1.7; }
+    .card-meta strong { color: var(--text); }
+    .card-status {
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .card-status.ok { color: var(--ok); }
+    .card-status.loading { color: var(--accent); }
+    .card-status.err { color: var(--err); }
+    .card-btns { display: flex; flex-wrap: wrap; gap: 7px; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 7px 13px;
+      border: none; border-radius: 8px;
+      font-size: 12px; font-weight: 600;
+      cursor: pointer; white-space: nowrap;
+      transition: all .15s;
+      font-family: inherit;
+    }
+    .btn:disabled { opacity: .45; cursor: not-allowed; pointer-events: none; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-h); }
+    .btn-ghost { background: none; border: 1px solid var(--border); color: var(--text); }
+    .btn-ghost:hover { background: var(--bg); border-color: #D1D5DB; }
+    .btn-pin { background: var(--base-l); color: #92400E; border: 1px solid var(--base-border); }
+    .btn-pin:hover { background: #FEF3C7; }
+    .btn-dl { background: var(--ok-l); color: #065F46; border: 1px solid #A7F3D0; }
+    .btn-dl:hover { background: #D1FAE5; }
+    .btn-sm { padding: 5px 10px; font-size: 11px; }
+
+    /* Settings trigger */
+    .icon-btn {
+      padding: 6px 12px;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text-2);
+      cursor: pointer;
+      display: flex; align-items: center; gap: 5px;
+      transition: all .15s;
+      font-family: inherit;
+    }
+    .icon-btn:hover { background: var(--bg); }
+
+    /* ── Input Area ── */
+    #input-area {
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      padding: 14px 20px;
+      flex-shrink: 0;
+    }
+
+    #p0-input, #p1-input { display: flex; flex-direction: column; gap: 10px; }
+    #p1-input { display: none; }
+
+    .input-row { display: flex; gap: 8px; align-items: flex-end; }
+
+    textarea, input[type="text"] {
+      flex: 1;
+      padding: 9px 13px;
+      border: 1.5px solid var(--border);
+      border-radius: 9px;
+      font-size: 13px;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--bg);
+      resize: none;
+      outline: none;
+      transition: border-color .15s, background .15s;
+      line-height: 1.5;
+    }
+    textarea:focus, input[type="text"]:focus {
+      border-color: var(--accent);
+      background: var(--surface);
+    }
+    textarea::placeholder, input::placeholder { color: var(--text-3); }
+
+    /* Attach bar */
+    .attach-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .attach-btn {
+      padding: 5px 11px;
+      background: var(--bg);
+      border: 1.5px dashed var(--border);
+      border-radius: 7px;
+      font-size: 12px;
+      color: var(--text-2);
+      cursor: pointer;
+      transition: all .15s;
+      font-family: inherit;
+      flex-shrink: 0;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .attach-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-l); }
+    #attach-preview {
+      position: relative;
+      width: 36px; height: 36px;
+      flex-shrink: 0;
+      display: none;
+    }
+    #attach-preview img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      display: block;
+    }
+    #rm-upload {
+      position: absolute; top: -5px; right: -5px;
+      width: 16px; height: 16px;
+      background: var(--err); color: #fff;
+      border: none; border-radius: 50%;
+      font-size: 10px; line-height: 1;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #attach-hint { font-size: 11px; color: var(--text-3); }
+
+    /* Phase 1 ref bar */
+    #ref-bar {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 12px;
+      background: var(--base-l);
+      border: 1px solid var(--base-border);
+      border-radius: 8px;
+      font-size: 12px;
+      color: #78350F;
+    }
+    #ref-thumb {
+      width: 30px; height: 30px;
+      border-radius: 5px;
+      object-fit: cover;
+      flex-shrink: 0;
+      display: none;
+    }
+    #ref-bar-hint { flex: 1; font-size: 11px; color: #92400E; }
+
+    /* ── Modal ── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 200;
+      display: none;
+      align-items: center; justify-content: center;
+    }
+    .overlay.show { display: flex; }
+    .modal {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 24px;
+      width: 440px;
+      max-width: 92vw;
+      box-shadow: 0 20px 60px rgba(0,0,0,.18);
+    }
+    .modal h2 { font-size: 15px; font-weight: 700; margin-bottom: 18px; }
+    .fg { margin-bottom: 14px; }
+    .fg label { font-size: 11px; font-weight: 600; color: var(--text-2); display: block; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .05em; }
+    .fg input, .fg select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--bg);
+      outline: none;
+    }
+    .fg input:focus, .fg select:focus { border-color: var(--accent); }
+    .fg .hint { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+    .fg .warn { font-size: 11px; color: #B45309; margin-top: 4px; background: var(--base-l); padding: 6px 8px; border-radius: 5px; border: 1px solid var(--base-border); }
+    .modal-ftr { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #1F2937;
+      color: #fff;
+      font-size: 13px;
+      padding: 10px 18px;
+      border-radius: 99px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.2);
+      opacity: 0;
+      transition: all .25s;
+      z-index: 999;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* scrollbar */
+    #history::-webkit-scrollbar { width: 5px; }
+    #history::-webkit-scrollbar-track { background: transparent; }
+    #history::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 99px; }
+
+    :focus-visible { outline: 3px solid rgba(99,102,241,.35); outline-offset: 2px; }
+    [hidden] { display: none !important; }
+    .service-box {
+      border: 1px solid var(--border); background: var(--bg); border-radius: 8px;
+      padding: 10px 12px; font-size: 12px; color: var(--text-2);
+    }
+    .service-dot { display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--text-3); margin-right:6px; }
+    .service-dot.ok { background: var(--ok); }
+    .service-dot.err { background: var(--err); }
+
+    @media (max-width: 720px) {
+      body { overflow: auto; min-height: 100%; }
+      #hdr { height: auto; min-height: 56px; padding: 10px 12px; gap: 8px; flex-wrap: wrap; }
+      .hdr-left, .hdr-right { min-width: 0; }
+      .hdr-logo { font-size: 14px; }
+      .phase-tag { display: none; }
+      #layout { min-height: calc(100vh - 70px); }
+      #sidebar { width: 104px; min-width: 104px; padding: 12px 8px; }
+      #base-img-wrap { min-height: 88px; }
+      #base-desc { font-size: 10px; }
+      #main { min-width: 0; }
+      #history { padding: 14px 10px; }
+      #input-area { padding: 10px; }
+      .input-row { align-items: stretch; }
+      .input-row textarea { min-width: 0; }
+      .card { grid-template-columns: 96px minmax(0,1fr); gap: 10px; padding: 10px; }
+      .card-img-wrap { width: 96px; height: 96px; }
+      .modal { max-height: 88vh; overflow: auto; padding: 18px; }
+      #toast { max-width: calc(100vw - 24px); white-space: normal; text-align: center; }
+    }
+
+    @media (max-width: 480px) {
+      #layout { display: block; }
+      #sidebar { width: 100%; min-width: 0; border-right: 0; border-bottom: 1px solid var(--border); }
+      #sb-inner { display: grid; grid-template-columns: 72px 1fr; gap: 6px 10px; align-items: center; }
+      .sb-label { grid-column: 1 / -1; }
+      #base-img-wrap { width: 72px; height: 72px; min-height: 72px; grid-row: 2 / span 2; }
+      #base-desc, #reset-btn { margin: 0; }
+      #main { min-height: 65vh; }
+      .icon-btn { padding: 6px 8px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div id="hdr">
+  <div class="hdr-left">
+    <div class="hdr-logo">🎭 表情包 <em>IP</em> 创作台</div>
+    <div class="phase-tag" id="phase-tag">第 0 步 · 定基准角色</div>
+  </div>
+  <div class="hdr-right">
+    <div id="loading-indicator" role="status" aria-live="polite">
+      <div class="dot-pulse"><span></span><span></span><span></span></div>
+      <span id="loading-text">生成中…</span>
+    </div>
+    <a href="prompts.html" target="_blank" rel="noopener" class="icon-btn" style="text-decoration:none;">📝 提示词</a>
+    <button class="icon-btn" onclick="openSettings()">⚙️ 设置</button>
+  </div>
+</div>
+
+<!-- Layout -->
+<div id="layout">
+
+  <!-- Sidebar -->
+  <aside id="sidebar">
+    <div id="sb-inner">
+      <div class="sb-label">基准角色</div>
+      <div id="base-img-wrap">
+        <div id="sb-empty">
+          <span class="ico">🎨</span>
+          还没有基准<br>从下方输入开始
+        </div>
+      </div>
+      <div id="base-desc"></div>
+      <button id="reset-btn" onclick="resetBase()">↺ 重设基准角色</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div id="main">
+
+    <!-- History -->
+    <div id="history">
+      <div id="empty-state">
+        <div class="big-ico">✨</div>
+        <h2>开始你的 IP 创作</h2>
+        <p>描述你的角色形象，或上传一张参考图，生成你的基准角色</p>
+        <div class="steps">
+          <div class="step">0 · 定基准</div>
+          <div class="step">→</div>
+          <div class="step">1~N · 出表情</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input Area -->
+    <div id="input-area">
+
+      <!-- Phase 0 -->
+      <div id="p0-input">
+        <div class="input-row">
+          <textarea id="text-in" rows="2"
+            aria-label="角色形象描述"
+            placeholder="描述角色形象（可选）· 例如：一只戴圆框眼镜的橘猫，圆脸，穿蓝色卫衣，扁平插画风格"></textarea>
+          <button class="btn btn-primary" id="btn-gen-base" onclick="generateBase()">生成基准</button>
+        </div>
+        <div class="attach-bar">
+          <button class="attach-btn" type="button" onclick="triggerUpload()">📎 上传参考图（可选）</button>
+          <div id="attach-preview">
+            <img id="up-img" src="" alt="已上传的角色参考图">
+            <button id="rm-upload" type="button" aria-label="移除参考图" onclick="removeUpload(event)">×</button>
+          </div>
+          <span id="attach-hint">文字 · 图片 · 或两者都填，至少提供一项</span>
+          <input type="file" id="file-in" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="onFileSelect(event)">
+        </div>
+      </div>
+
+      <!-- Phase 1+ -->
+      <div id="p1-input">
+        <div id="ref-bar">
+          <img id="ref-thumb" src="" alt="">
+          <span>📌</span>
+          <div id="ref-bar-hint">引用基准角色 · 角色外观已锁定，只需描述表情或动作</div>
+        </div>
+        <div class="input-row">
+          <textarea id="expr-in" rows="2"
+            aria-label="表情或动作描述"
+            placeholder="例如：生气瞪眼&#10;连续出多张：每行一条，或用「→」「,」「/」分隔，如：生气→比心→流泪"
+            onkeydown="onExprKey(event)"></textarea>
+          <button class="btn btn-primary" id="btn-gen-expr" onclick="generateExpression()">生成</button>
+        </div>
+      </div>
+
+    </div><!-- /input-area -->
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<!-- Settings Modal -->
+<div class="overlay" id="modal-settings" onclick="onOverlayClick(event,'modal-settings')" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+  <div class="modal" tabindex="-1">
+    <h2 id="settings-title">⚙️ 设置</h2>
+    <div class="fg" id="service-config">
+      <label>生成服务</label>
+      <div class="service-box"><span class="service-dot" id="service-dot"></span><span id="service-status">正在检测…</span></div>
+      <div class="hint">生产环境应走后端代理；本机 demo 模式浏览器直连 DashScope，Key 仅保存在页面内存。</div>
+    </div>
+    <div class="fg direct-mode-only" hidden>
+      <label>API Key（阿里云 DashScope）</label>
+      <input type="password" id="cfg-key" autocomplete="off" placeholder="sk-...">
+      <div class="warn">仅限本机开发调试。Key 会由浏览器直接发送给模型服务，请勿在公开网站使用。</div>
+    </div>
+    <div class="fg">
+      <label>模型</label>
+      <select id="cfg-model">
+        <option value="wan2.7-image">wan2.7-image（快速，≤2K）</option>
+        <option value="wan2.7-image-pro">wan2.7-image-pro（高质量，≤4K）</option>
+      </select>
+    </div>
+    <div class="fg direct-mode-only" hidden>
+      <label>CORS 代理地址（可选）</label>
+      <input type="text" id="cfg-proxy" placeholder="例如 https://corsproxy.io/?">
+      <div class="warn">⚠️ 如果直接调用 API 遇到跨域错误，可填入代理地址。生产环境应走后端代理，不应暴露 API Key。</div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-ghost" onclick="closeModal('modal-settings')">取消</button>
+      <button class="btn btn-primary" onclick="saveSettings()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Identity Change Confirmation Modal -->
+<div class="overlay" id="modal-identity" onclick="onOverlayClick(event,'modal-identity')" role="dialog" aria-modal="true" aria-labelledby="identity-title">
+  <div class="modal" tabindex="-1">
+    <h2 id="identity-title">⚠️ 检测到身份变更请求</h2>
+    <p style="font-size:13px;color:var(--text-2);line-height:1.75;margin-bottom:16px;">
+      这条指令可能会改变角色的<strong>物种、性别、标志配饰或画风</strong>等身份级特征，而不只是表情或动作。<br><br>
+      建议通过「↺ 重设基准角色」创建新角色；若坚持生成，结果只作为候选，<strong>不会覆盖当前基准</strong>。
+    </p>
+    <div class="modal-ftr" style="justify-content:space-between;">
+      <button class="btn btn-ghost" onclick="closeModal('modal-identity')">取消</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-pin" onclick="closeModal('modal-identity');resetBase()">↺ 重设基准角色</button>
+        <button class="btn btn-primary" onclick="forceGenerateExpression()">坚持生成（不改基准）</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="app-config.js"></script>
+<script>
+// ════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════
+const S = {
+  apiKey: '', // 请在设置面板中填入，禁止硬编码
+  model: 'wan2.7-image',
+  proxy: '',
+  phase: 0,
+  base: null,          // { imgSrc, imgB64, desc }
+  uploadB64: null,
+  inputMode: 'text',
+  history: [],         // card objects
+  busy: false,
+};
+
+const APP_CONFIG = window.IP_EMOJI_CONFIG || {};
+const API_BASE_URL = String(APP_CONFIG.apiBaseUrl || '').replace(/\/$/, '');
+const REQUEST_TIMEOUT_MS = Number(APP_CONFIG.requestTimeoutMs) || 120000;
+const MAX_UPLOAD_BYTES = Number(APP_CONFIG.maxUploadBytes) || 4 * 1024 * 1024;
+const MAX_UPLOAD_DIMENSION = Number(APP_CONFIG.maxUploadDimension) || 1536;
+const IS_LOCAL_HOST = ['localhost', '127.0.0.1'].includes(location.hostname);
+const DIRECT_MODE = APP_CONFIG.mode === 'direct' && APP_CONFIG.enableLocalDirectMode === true && IS_LOCAL_HOST;
+// 显式配置的云函数地址优先；未配置时使用同源服务器代理。
+const IS_SERVER_MODE = !DIRECT_MODE && !API_BASE_URL && (location.protocol === 'http:' || location.protocol === 'https:');
+
+let cardSeq = 0;
+
+// ════════════════════════════════════════
+//  PROMPT TEMPLATES
+//  默认值与 prompts.html 中的版本保持同步
+//  用户在 prompts.html 编辑后存入 localStorage，
+//  此处 loadUserPrompts() 优先读取用户版本。
+// ════════════════════════════════════════
+const PROMPT_KEY = 'ip-emoji-prompts';
+
+const DEFAULT_PROMPTS = {
+  baseText: '{{角色描述}}，IP 吉祥物插画，表情包风格，正方形构图，角色主体居中，纯白背景，无文字水印，正面视角，标准站姿，中性表情',
+  baseImg:  '参考图中是一个 IP 角色形象，请生成同一角色的标准表情包图。严格保持角色的所有外观特征：脸型、颜色搭配、配饰细节、整体画风。构图：正方形，角色主体居中，纯白背景，无文字水印，正面视角。{{附加描述}}',
+  expr:     '只生成一张独立的单图，画面中只有一个角色、一个表情动作，禁止拼图/九宫格/分镜/多格漫画/边框分割。严格保持参考图中角色的所有外观特征不变（脸型、颜色、配饰、画风必须与参考图完全一致）。本次只改变表情和动作：{{表情指令}}。如有手部，手指数量正确、结构自然。构图：正方形，角色主体居中，纯白背景，无文字无水印，正面或四分之三侧面视角。',
+};
+
+function loadUserPrompts() {
+  try {
+    const saved = localStorage.getItem(PROMPT_KEY);
+    if (saved) return { ...DEFAULT_PROMPTS, ...JSON.parse(saved) };
+  } catch {}
+  return { ...DEFAULT_PROMPTS };
+}
+
+// ════════════════════════════════════════
+//  API
+// ════════════════════════════════════════
+const NATIVE_ENDPOINT = 'https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation';
+
+function serviceConfigured() {
+  if (DIRECT_MODE) return !!S.apiKey;
+  if (IS_SERVER_MODE) return true; // 服务器代理模式，API Key 在服务端
+  return /^https?:\/\//i.test(API_BASE_URL);
+}
+
+async function fetchWithTimeout(url, options = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('生成服务响应超时，请稍后重试');
+    throw new Error('暂时无法连接生成服务，请检查网络后重试');
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function responseError(resp) {
+  try {
+    const data = await resp.json();
+    return data?.error?.message || data?.message || `生成服务返回错误（${resp.status}）`;
+  } catch {
+    return `生成服务返回错误（${resp.status}）`;
+  }
+}
+
+async function callAPI(textPrompt, refB64 = null) {
+  if (!serviceConfigured()) throw new Error(DIRECT_MODE ? '请先在设置中填入 API Key' : '生成服务尚未配置，请联系管理员');
+
+  if (IS_SERVER_MODE || (!DIRECT_MODE && API_BASE_URL)) {
+    const endpoint = IS_SERVER_MODE ? '/api/generate' : `${API_BASE_URL}/api/generate`;
+    const resp = await fetchWithTimeout(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: textPrompt, referenceImage: refB64, model: S.model }),
+    });
+    if (!resp.ok) throw new Error(await responseError(resp));
+    const data = await resp.json();
+    if (!data?.imageUrl) throw new Error('生成服务没有返回有效图片');
+    return data.imageUrl;
+  }
+
+  // 直连模式：阿里云 DashScope Wan2.7 多模态接口
+  const content = [];
+  if (textPrompt) content.push({ text: textPrompt });
+  if (refB64)    content.push({ image: refB64 });
+
+  const payload = {
+    model: S.model,
+    input: { messages: [{ role: 'user', content }] },
+    parameters: { size: '1K', n: 1, thinking_mode: false },
+  };
+
+  const url = S.proxy
+    ? S.proxy + encodeURIComponent(NATIVE_ENDPOINT)
+    : NATIVE_ENDPOINT;
+
+  let resp;
+  try {
+    resp = await fetchWithTimeout(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${S.apiKey}`,
+        'Content-Type': 'application/json',
+        'X-DashScope-Async': 'disable',
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (e) { throw e; }
+
+  if (!resp.ok) {
+    throw new Error(await responseError(resp));
+  }
+
+  const data = await resp.json();
+  if (data.code && data.code !== '200' && data.code !== 200) {
+    throw new Error(`模型服务拒绝了请求：${data.message || data.code}`);
+  }
+
+  const imgUrl = data?.output?.choices?.[0]?.message?.content?.[0]?.image;
+  if (!imgUrl) throw new Error('模型服务没有返回有效图片');
+
+  return imgUrl;
+}
+
+async function toDataURL(url) {
+  try {
+    const r = await fetchWithTimeout(url, { mode: 'cors' });
+    const blob = await r.blob();
+    return await new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onload = () => res(fr.result);
+      fr.onerror = rej;
+      fr.readAsDataURL(blob);
+    });
+  } catch {
+    return url; // fallback: use URL directly
+  }
+}
+
+// ════════════════════════════════════════
+//  PROMPTS
+// ════════════════════════════════════════
+function buildBasePrompt(desc, isImgRef) {
+  const P = loadUserPrompts();
+  if (isImgRef) {
+    const extra = desc ? `额外风格要求：${desc}。` : '';
+    return P.baseImg.replace('{{附加描述}}', extra);
+  }
+  return P.baseText.replace('{{角色描述}}', desc);
+}
+
+function buildExprPrompt(instruction) {
+  const P = loadUserPrompts();
+  return P.expr.replace('{{表情指令}}', instruction);
+}
+
+// ════════════════════════════════════════
+//  GUARDS  (前端预检，第一道防线)
+//  生产环境应同时在服务端做内容审核；
+//  这里的关键词匹配只是最低限度的用户引导。
+// ════════════════════════════════════════
+
+// P0-1: 检测身份特征变更（物种/性别/配饰/画风）
+function detectIdentityChange(text) {
+  const t = text;
+  // 替换类动词 + 物种/性别目标词
+  if (/改成|换成|变成|替换成|改为|变为|换为/.test(t) &&
+      /狗|猫|兔|熊|猪|鸟|龙|虎|人类|男孩|女孩|男性|女性|男生|女生|男人|女人|外星人|机器人/.test(t)) return true;
+  // 移除标志配饰
+  if (/(去掉|摘掉|取消|不要|没有|去除|删去)(眼镜|帽子|墨镜|围巾|项链|耳环|发带|口罩|头盔|蝴蝶结)/.test(t)) return true;
+  // 改画风/风格
+  if (/(改成|换成|变成|改为|变为|变换为)(写实|3d|三维|水彩|油画|像素|手绘|古风|赛博|国风|漫画风)/.test(t)) return true;
+  // 性别互转
+  if (/(男变女|女变男|性转|变性)/.test(t)) return true;
+  // 改整体颜色/毛色
+  if (/(改|换)(全身颜色|整体配色|毛色|发色|肤色)/.test(t)) return true;
+  return false;
+}
+
+// P0-2: 检测不安全内容（色情 / 血腥 / 暴力）
+function detectUnsafe(text) {
+  const t = text;
+  const blocked = [
+    // 色情
+    /色情|裸体|裸露|全裸|半裸|性行为|性爱|淫|pornograph|nude|naked|nsfw|情色|成人内容/,
+    // 血腥
+    /血腥|断肢|断臂|断腿|内脏外露|器官外露|伤口特写|血浆|尸体|尸块|开膛|破腹/,
+    // 暴力
+    /持刀伤人|持枪|枪击|砍杀|刺杀|行凶|自残|自杀|割腕|跳楼|爆头|虐杀|杀人/,
+  ];
+  return blocked.some(p => p.test(t));
+}
+
+// P0-3: 检测仿冒知名 IP（锚点是 IP 名称，不是修饰词）
+function detectIPMimicry(text) {
+  const t = text.toLowerCase();
+  const knownIPs = [
+    '米老鼠','mickey','唐老鸭','donald duck',
+    '皮卡丘','pikachu','宠物小精灵','pokemon','精灵宝可梦',
+    '哆啦a梦','哆啦a梦','机器猫','doraemon',
+    '塞尔达','zelda','林克',
+    '马里奥','mario','路易吉','luigi',
+    '奥特曼','ultraman',
+    '柯南','江户川柯南',
+    '路飞','海贼王','one piece',
+    '孙悟空','七龙珠','dragon ball',
+    '蜡笔小新','crayon shin',
+    '小黄人','minion','神偷奶爸',
+    '熊本熊','kumamon',
+    'hello kitty','凯蒂猫',
+    '史努比','snoopy',
+    '加菲猫','garfield',
+    '小熊维尼','维尼熊','winnie the pooh',
+    '爱莎','elsa','冰雪奇缘',
+    '狮子王','辛巴','simba',
+    '哈利波特','harry potter',
+    '蜘蛛侠','spider-man','spiderman',
+    '钢铁侠','iron man','ironman',
+    '美国队长','captain america',
+    '变形金刚','optimus prime',
+    '火影忍者','naruto','鸣人','佐助',
+    '鬼灭之刃','进击的巨人',
+    '龙猫','totoro','千与千寻',
+    '葫芦娃','黑猫警长','喜羊羊','光头强',
+  ];
+  return knownIPs.some(ip => t.includes(ip));
+}
+
+let _pendingInstruction = null; // 身份变更确认弹窗暂存
+
+// 解析多表情连续指令，如"连出:生气→比心→流泪"→['生气','比心','流泪']
+// 支持：换行 / → / , / / / | / + / 、 / ；等常见分隔符
+function parseMultiExpression(raw) {
+  const cleaned = raw.replace(/^(连出|连续出|依次出|批量出|连续|依次)[：:]\s*/u, '').trim();
+
+  // 优先按换行拆（用户用 Shift+Enter 逐行输入）
+  const byLine = cleaned.split(/[\n\r]+/).map(s => s.trim()).filter(s => s.length > 0);
+  if (byLine.length >= 2) return byLine;
+
+  // 仅用明确的批量分隔符，避免把“哭泣/委屈”或带连字符的单条指令误拆开
+  const bySymbol = cleaned
+    .split(/\s*(?:→|>|、|,|，|;|；|\|)\s*/)
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+  if (bySymbol.length >= 2) return bySymbol;
+
+  return [raw.trim()];
+}
+
+// ════════════════════════════════════════
+//  GENERATION
+// ════════════════════════════════════════
+async function generateBase() {
+  if (S.busy) return;
+  if (!serviceConfigured()) { openSettings(); return; }
+
+  const desc   = document.getElementById('text-in').value.trim();
+  const hasImg = !!S.uploadB64;
+
+  if (!desc && !hasImg) { showToast('请输入描述或上传参考图，至少提供一项'); return; }
+
+  // P0-2 内容安全
+  if (desc && detectUnsafe(desc)) {
+    showToast('⚠️ 内容包含违规词汇（色情/暴力/血腥），无法生成');
+    return;
+  }
+  // P0-3 仿冒拦截（锚点是 IP 名，不是修饰词）
+  if (desc && detectIPMimicry(desc)) {
+    showToast('⚠️ 描述中含有知名 IP 名称，存在版权侵权风险，无法生成');
+    return;
+  }
+
+  let prompt, refB64;
+  if (hasImg) {
+    prompt = buildBasePrompt(desc, true);
+    refB64 = S.uploadB64;
+  } else {
+    prompt = buildBasePrompt(desc, false);
+  }
+  const cardLabel = desc || '参考图角色';
+
+  removeEmptyState();
+
+  const card = mkCard('candidate', cardLabel, prompt, refB64 || null);
+  addCard(card);
+  renderCard(card);
+  setBusy(true);
+
+  try {
+    const url = await callAPI(prompt, refB64 || null);
+    const src = await toDataURL(url);
+    const out = await normalizeOutput(src);
+    card.imgSrc = out;
+    card.imgB64 = out;
+    card.status = 'ok';
+  } catch (e) {
+    card.status = 'err';
+    card.errMsg = e.message;
+  }
+
+  setBusy(false);
+  refreshCard(card);
+}
+
+async function generateExpression(forcedInstruction = null) {
+  if (S.busy || !S.base) return;
+  if (!serviceConfigured()) { openSettings(); return; }
+
+  const rawInput = forcedInstruction ?? document.getElementById('expr-in').value.trim();
+  if (!rawInput) { showToast('请输入表情或动作描述'); return; }
+
+  // 批量模式：检测多表情连续指令（forcedInstruction 跳过解析，直接走单条）
+  const instructions = forcedInstruction ? [forcedInstruction] : parseMultiExpression(rawInput);
+
+  if (instructions.length > 1) {
+    document.getElementById('expr-in').value = '';
+    setBusy(true);
+    showToast(`共 ${instructions.length} 条指令，依次生成独立图…`);
+    let genCount = 0;
+    for (let i = 0; i < instructions.length; i++) {
+      const inst = instructions[i];
+      setLoadingText(`生成中 ${i + 1}/${instructions.length}…`);
+      if (detectUnsafe(inst)) {
+        showToast(`⚠️「${inst.slice(0,8)}」含违规内容，已跳过`);
+        continue;
+      }
+      if (detectIdentityChange(inst)) {
+        showToast(`⚠️「${inst.slice(0,8)}」含身份变更，已跳过`);
+        continue;
+      }
+      await _doGenerateExpr(inst, false);
+      genCount++;
+    }
+    setBusy(false);
+    showToast(`✓ 批量完成，共生成 ${genCount} 张`);
+    return;
+  }
+
+  // 单条模式
+  const instruction = instructions[0];
+
+  // P0-2 内容安全
+  if (detectUnsafe(instruction)) {
+    showToast('⚠️ 内容包含违规词汇（色情/暴力/血腥），无法生成');
+    return;
+  }
+  // P0-1 身份保护（未强制时弹确认框）
+  if (!forcedInstruction && detectIdentityChange(instruction)) {
+    _pendingInstruction = instruction;
+    document.getElementById('modal-identity').classList.add('show');
+    return;
+  }
+
+  if (!forcedInstruction) document.getElementById('expr-in').value = '';
+  setBusy(true);
+  await _doGenerateExpr(instruction, !!forcedInstruction);
+  setBusy(false);
+}
+
+// 执行单张表情生成（不管理 busy 状态，由调用方控制）
+async function _doGenerateExpr(instruction, isForced) {
+  const refB64 = S.base.imgB64 || S.base.imgSrc;
+  const prompt = buildExprPrompt(instruction);
+  const cardType = isForced ? 'candidate' : 'expr';
+  const card = mkCard(cardType, instruction, prompt, refB64);
+  if (isForced) card.identityWarning = true;
+  addCard(card);
+  renderCard(card);
+  scrollDown();
+
+  try {
+    const url = await callAPI(prompt, refB64);
+    const src = await toDataURL(url);
+    const out = await normalizeOutput(src);
+    card.imgSrc = out;
+    card.imgB64 = out;
+    card.status = 'ok';
+  } catch (e) {
+    card.status = 'err';
+    card.errMsg = e.message;
+  }
+  refreshCard(card);
+}
+
+function forceGenerateExpression() {
+  closeModal('modal-identity');
+  const inst = _pendingInstruction;
+  _pendingInstruction = null;
+  if (inst) generateExpression(inst);
+}
+
+async function regen(id) {
+  if (S.busy) return;
+  const card = S.history.find(c => c.id === id);
+  if (!card) return;
+
+  card.status = 'loading';
+  card.imgSrc = null;
+  card.imgB64 = null;
+  card.errMsg = null;
+  refreshCard(card);
+  setBusy(true);
+
+  try {
+    const url = await callAPI(card.prompt, card.refB64 || null);
+    const src = await toDataURL(url);
+    const out = await normalizeOutput(src);
+    card.imgSrc = out;
+    card.imgB64 = out;
+    card.status = 'ok';
+  } catch (e) {
+    card.status = 'err';
+    card.errMsg = e.message;
+  }
+
+  setBusy(false);
+  refreshCard(card);
+}
+
+function setBase(id) {
+  const card = S.history.find(c => c.id === id);
+  if (!card || card.status !== 'ok') return;
+
+  S.history.forEach(c => { c.isBase = false; });
+  card.isBase = true;
+
+  S.base = {
+    imgSrc: card.imgSrc,
+    imgB64: card.imgB64 || card.imgSrc,
+    desc: card.label,
+  };
+  S.phase = 1;
+
+  S.history.forEach(c => refreshCard(c));
+  updateSidebar();
+  updateInputArea();
+  showToast('📌 基准角色已设定，开始出表情吧！');
+}
+
+function resetBase() {
+  S.phase = 0;
+  S.base = null;
+  S.history.forEach(c => { c.isBase = false; refreshCard(c); });
+  updateSidebar();
+  updateInputArea();
+}
+
+function download(id) {
+  const card = S.history.find(c => c.id === id);
+  if (!card || !card.imgSrc) return;
+  const a = document.createElement('a');
+  a.href = card.imgSrc;
+  a.download = `emoji-${card.label.slice(0, 12).replace(/\s/g, '_')}-${id}.png`;
+  a.click();
+}
+
+// ════════════════════════════════════════
+//  CARD MODEL
+// ════════════════════════════════════════
+function mkCard(type, label, prompt, refB64) {
+  return {
+    id: 'c' + (++cardSeq),
+    type,       // 'candidate' | 'expr'
+    label,
+    prompt,
+    refB64: refB64 || null,
+    imgSrc: null,
+    imgB64: null,
+    status: 'loading',
+    errMsg: null,
+    isBase: false,
+  };
+}
+
+function addCard(card) {
+  S.history.push(card);
+}
+
+// ════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════
+function removeEmptyState() {
+  const es = document.getElementById('empty-state');
+  if (es) es.remove();
+}
+
+function renderCard(card) {
+  const hist = document.getElementById('history');
+  const div = document.createElement('div');
+  div.id = card.id;
+  div.innerHTML = cardHTML(card);
+  hist.appendChild(div);
+  scrollDown();
+}
+
+function refreshCard(card) {
+  const el = document.getElementById(card.id);
+  if (el) el.innerHTML = cardHTML(card);
+}
+
+function cardHTML(card) {
+  // ── header badges ──
+  let badges = '';
+  if (card.isBase) {
+    badges = `<span class="badge badge-base">📌 当前基准</span>`;
+  } else if (card.identityWarning) {
+    badges = `<span class="badge badge-identity">⚠️ 身份变更候选</span>`;
+  } else if (card.type === 'candidate') {
+    badges = `<span class="badge badge-candidate">候选基准</span>`;
+  } else {
+    badges = `<span class="badge badge-expr">✨ 表情</span>
+              <span class="badge badge-ref">📌 引用基准</span>`;
+  }
+
+  // ── image block ──
+  let imgBlock = '';
+  if (card.status === 'loading') {
+    imgBlock = `<div class="img-wrap loading">
+      <div class="spin-wrap"><div class="spinner"></div></div>
+    </div>`;
+  } else if (card.status === 'ok' && card.imgSrc) {
+    imgBlock = `<div class="img-wrap">
+      <img src="${esc(card.imgSrc)}" alt="${esc(card.label)}">
+    </div>`;
+  } else {
+    imgBlock = `<div class="img-wrap">
+      <div class="img-err">
+        <span class="ico">⚠️</span>
+        <span>生成失败</span>
+      </div>
+    </div>`;
+  }
+
+  // ── status line ──
+  let statusLine = '';
+  if (card.status === 'loading') statusLine = `<div class="card-status loading">⟳ 生成中，请稍候…</div>`;
+  else if (card.status === 'ok')   statusLine = `<div class="card-status ok">✓ 生成成功</div>`;
+  else if (card.status === 'err')  statusLine = `<div class="card-status err">✕ ${esc(card.errMsg || '生成失败')}</div>`;
+
+  // ── action buttons ──
+  let btns = '';
+  if (card.status === 'ok') {
+    if (card.type === 'candidate' && !card.isBase) {
+      btns += `<button class="btn btn-pin" onclick="setBase('${card.id}')">📌 设为基准角色</button>`;
+    }
+    btns += `<button class="btn btn-dl" onclick="download('${card.id}')">⬇️ 下载</button>`;
+    btns += `<button class="btn btn-ghost" onclick="regen('${card.id}')">↺ 重新生成</button>`;
+  } else if (card.status === 'err') {
+    btns += `<button class="btn btn-ghost" onclick="regen('${card.id}')">↺ 重试</button>`;
+  }
+
+  // ── meta ──
+  const meta = card.type === 'candidate'
+    ? `<div class="card-meta"><strong>角色描述：</strong>${esc(card.label)}</div>`
+    : `<div class="card-meta"><strong>表情指令：</strong>${esc(card.label)}</div>`;
+
+  return `<div class="card${card.isBase ? ' is-base' : ''}">
+    <div class="card-hdr">
+      ${badges}
+      <span class="card-label">${esc(card.label)}</span>
+    </div>
+    <div class="card-body">
+      ${imgBlock}
+      <div class="card-info">
+        ${meta}
+        ${statusLine}
+        <div class="card-btns">${btns}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ════════════════════════════════════════
+//  UI UPDATES
+// ════════════════════════════════════════
+function updateSidebar() {
+  const wrap = document.getElementById('base-img-wrap');
+  const desc = document.getElementById('base-desc');
+  const rbtn = document.getElementById('reset-btn');
+
+  if (S.base) {
+    wrap.className = 'set';
+    wrap.innerHTML = `<img src="${esc(S.base.imgSrc)}" alt="基准角色">
+      <div class="base-pin">📌 基准</div>`;
+    desc.style.display = 'block';
+    desc.textContent = S.base.desc;
+    rbtn.style.display = 'block';
+  } else {
+    wrap.className = '';
+    wrap.innerHTML = `<div id="sb-empty"><span class="ico">🎨</span>还没有基准<br>从下方输入开始</div>`;
+    desc.style.display = 'none';
+    rbtn.style.display = 'none';
+  }
+}
+
+function updateInputArea() {
+  const p0 = document.getElementById('p0-input');
+  const p1 = document.getElementById('p1-input');
+  const tag = document.getElementById('phase-tag');
+
+  if (S.phase === 0) {
+    p0.style.display = 'flex';
+    p1.style.display = 'none';
+    tag.textContent = '第 0 步 · 定基准角色';
+    tag.className = 'phase-tag';
+  } else {
+    p0.style.display = 'none';
+    p1.style.display = 'flex';
+    tag.textContent = '创作模式 · 引用基准';
+    tag.className = 'phase-tag active';
+
+    const thumb = document.getElementById('ref-thumb');
+    if (S.base && thumb) {
+      thumb.src = S.base.imgSrc || '';
+      thumb.style.display = S.base.imgSrc ? 'block' : 'none';
+    }
+
+    setTimeout(() => document.getElementById('expr-in')?.focus(), 100);
+  }
+}
+
+function setLoadingText(txt) {
+  const el = document.getElementById('loading-text');
+  if (el) el.textContent = txt;
+}
+
+function setBusy(v) {
+  S.busy = v;
+  document.getElementById('loading-indicator').classList.toggle('show', v);
+  if (!v) setLoadingText('生成中…');
+  ['btn-gen-base','btn-gen-expr'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = v;
+  });
+}
+
+function scrollDown() {
+  const h = document.getElementById('history');
+  setTimeout(() => { h.scrollTop = h.scrollHeight; }, 60);
+}
+
+// ════════════════════════════════════════
+//  INPUT / UPLOAD
+// ════════════════════════════════════════
+
+// P1-2: 统一输出规格 — 裁成 1:1 方形、放大到 targetPx、输出 PNG
+async function normalizeOutput(dataUrl, targetPx = 768) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const { naturalWidth: w, naturalHeight: h } = img;
+      const side = Math.max(w, h, targetPx);
+      const canvas = document.createElement('canvas');
+      canvas.width = side; canvas.height = side;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, side, side);
+      // 等比缩放后居中放置
+      const scale = Math.min(side / w, side / h);
+      const nw = w * scale, nh = h * scale;
+      ctx.drawImage(img, (side - nw) / 2, (side - nh) / 2, nw, nh);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+// 将上传图限制在可控尺寸内，兼顾 API 最小边与云函数请求体上限
+async function normalizeUpload(dataUrl, minPx = 240, maxPx = MAX_UPLOAD_DIMENSION) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const { naturalWidth: w, naturalHeight: h } = img;
+      const upscale = Math.max(minPx / w, minPx / h, 1);
+      const downscale = Math.min(maxPx / w, maxPx / h, 1);
+      const scale = upscale > 1 ? upscale : downscale;
+      if (scale === 1 && dataUrl.length < 4.8 * 1024 * 1024) { resolve(dataUrl); return; }
+      const nw = Math.round(w * scale);
+      const nh = Math.round(h * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = nw; canvas.height = nh;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, nw, nh);
+      ctx.drawImage(img, 0, 0, nw, nh);
+      resolve(canvas.toDataURL('image/jpeg', 0.86));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+function triggerUpload() { document.getElementById('file-in').click(); }
+
+function onFileSelect(e) { const f = e.target.files[0]; if (f) applyFile(f); }
+
+async function applyFile(file) {
+  const allowed = new Set(['image/jpeg', 'image/png', 'image/webp']);
+  if (!allowed.has(file.type)) { showToast('仅支持 JPG、PNG 或 WebP 图片'); return; }
+  if (file.size > MAX_UPLOAD_BYTES) { showToast(`图片不能超过 ${Math.round(MAX_UPLOAD_BYTES / 1024 / 1024)}MB`); return; }
+  const fr = new FileReader();
+  fr.onload = async ev => {
+    const resized = await normalizeUpload(ev.target.result);
+    S.uploadB64 = resized;
+    document.getElementById('up-img').src = resized;
+    document.getElementById('attach-preview').style.display = 'block';
+    document.getElementById('attach-hint').style.display = 'none';
+  };
+  fr.readAsDataURL(file);
+}
+
+function removeUpload(e) {
+  e.stopPropagation();
+  S.uploadB64 = null;
+  document.getElementById('up-img').src = '';
+  document.getElementById('attach-preview').style.display = 'none';
+  document.getElementById('attach-hint').style.display = '';
+  document.getElementById('file-in').value = '';
+}
+
+function onExprKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); generateExpression(); }
+}
+
+// ════════════════════════════════════════
+//  SETTINGS / MODAL
+// ════════════════════════════════════════
+function openSettings() {
+  document.getElementById('cfg-key').value   = S.apiKey;
+  document.getElementById('cfg-model').value = S.model;
+  document.getElementById('cfg-proxy').value = S.proxy;
+  document.querySelectorAll('.direct-mode-only').forEach(el => { el.hidden = !DIRECT_MODE; });
+  document.getElementById('modal-settings').classList.add('show');
+  document.querySelector('#modal-settings .modal').focus();
+  updateServiceStatus();
+}
+
+function saveSettings() {
+  S.apiKey = document.getElementById('cfg-key').value.trim();
+  S.model  = document.getElementById('cfg-model').value;
+  S.proxy  = document.getElementById('cfg-proxy').value.trim();
+  closeModal('modal-settings');
+  showToast('设置已保存');
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+function onOverlayClick(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
+
+async function updateServiceStatus() {
+  const dot = document.getElementById('service-dot');
+  const text = document.getElementById('service-status');
+  dot.className = 'service-dot';
+  if (DIRECT_MODE) {
+    text.textContent = S.apiKey ? '本机直连模式已配置' : '本机直连模式未配置';
+    dot.classList.add(S.apiKey ? 'ok' : 'err');
+    return;
+  }
+  if (IS_SERVER_MODE) {
+    text.textContent = '正在检测服务端代理…';
+    try {
+      const r = await fetchWithTimeout('/health', { headers: { 'Accept': 'application/json' } });
+      if (!r.ok) throw new Error('health check failed');
+      const data = await r.json();
+      if (!data.configured) {
+        text.textContent = '服务端代理可访问，但 API Key 尚未配置（请设置环境变量）';
+        dot.classList.add('err'); return;
+      }
+      text.textContent = '服务端代理连接正常 ✓';
+      dot.classList.add('ok');
+    } catch {
+      text.textContent = '服务端代理连接失败';
+      dot.classList.add('err');
+    }
+    return;
+  }
+  if (!serviceConfigured()) {
+    text.textContent = '尚未配置代理服务地址';
+    dot.classList.add('err');
+    return;
+  }
+  text.textContent = '正在检测代理服务…';
+  try {
+    const r = await fetchWithTimeout(`${API_BASE_URL}/health`, { headers: { 'Accept': 'application/json' } });
+    if (!r.ok) throw new Error();
+    const data = await r.json();
+    if (!data.configured) {
+      text.textContent = '代理可访问，但模型 API Key 尚未配置';
+      dot.classList.add('err');
+      return;
+    }
+    text.textContent = '代理服务连接正常 ✓';
+    dot.classList.add('ok');
+  } catch {
+    text.textContent = '代理服务暂时不可用';
+    dot.classList.add('err');
+  }
+}
+
+// ════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ════════════════════════════════════════
+//  UTILS
+// ════════════════════════════════════════
+function esc(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════
+updateSidebar();
+updateInputArea();
+if (!serviceConfigured()) openSettings();
+</script>
+</body>
+</html>

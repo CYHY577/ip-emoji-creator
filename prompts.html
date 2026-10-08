@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="表情包 IP 创作台的本地提示词配置工具">
+  <meta name="robots" content="noindex,nofollow">
+  <title>提示词运营台 · 表情包 IP</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #F7F8FA;
+      --surface: #FFFFFF;
+      --border: #E5E7EB;
+      --text: #111827;
+      --text-2: #6B7280;
+      --text-3: #9CA3AF;
+      --accent: #6366F1;
+      --accent-h: #4F46E5;
+      --accent-l: #EEF2FF;
+      --base-c: #F59E0B;
+      --base-l: #FFFBEB;
+      --base-border: #FDE68A;
+      --ok: #10B981;
+      --ok-l: #ECFDF5;
+      --err: #EF4444;
+      --err-l: #FEF2F2;
+      --v1: #F97316;
+      --v1-l: #FFF7ED;
+      --v2: #6366F1;
+      --v2-l: #EEF2FF;
+      --r: 12px;
+      --sh: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* ── Header ── */
+    #hdr {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      height: 56px;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .hdr-left { display: flex; align-items: center; gap: 14px; }
+    .hdr-logo { font-size: 15px; font-weight: 700; letter-spacing: -.02em; }
+    .hdr-logo em { color: var(--accent); font-style: normal; }
+    .back-link {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 12px; color: var(--text-2);
+      text-decoration: none;
+      padding: 5px 11px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      transition: all .15s;
+    }
+    .back-link:hover { background: var(--bg); color: var(--text); }
+    #save-indicator {
+      font-size: 12px;
+      color: var(--ok);
+      display: none;
+      align-items: center;
+      gap: 5px;
+    }
+    #save-indicator.show { display: flex; }
+
+    /* ── Page body ── */
+    #page {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 28px 24px 60px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
+
+    /* Section headers */
+    .sec-hdr {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .sec-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--text-3);
+    }
+
+    /* ── Prompt Cards ── */
+    .prompt-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      box-shadow: var(--sh);
+      overflow: hidden;
+    }
+
+    .card-title-bar {
+      padding: 14px 18px 12px;
+      border-bottom: 1px solid var(--border);
+      background: #FAFAFA;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .card-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+    .card-title { font-size: 14px; font-weight: 700; }
+    .card-desc { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+
+    .card-body { padding: 16px 18px; }
+
+    /* Placeholder badges */
+    .ph-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .ph-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 5px;
+      background: var(--accent-l);
+      color: var(--accent);
+      border: 1px solid #C7D2FE;
+      font-family: monospace;
+    }
+    .ph-badge .ph-note {
+      font-weight: 400;
+      color: var(--text-2);
+      font-family: inherit;
+      font-size: 11px;
+    }
+
+    textarea.prompt-ta {
+      width: 100%;
+      min-height: 88px;
+      padding: 11px 13px;
+      border: 1.5px solid var(--border);
+      border-radius: 9px;
+      font-size: 13px;
+      font-family: 'SFMono-Regular', 'Consolas', 'PingFang SC', monospace;
+      color: var(--text);
+      background: var(--bg);
+      resize: vertical;
+      outline: none;
+      line-height: 1.7;
+      transition: border-color .15s, background .15s;
+    }
+    textarea.prompt-ta:focus {
+      border-color: var(--accent);
+      background: var(--surface);
+    }
+
+    .card-footer {
+      padding: 10px 18px;
+      border-top: 1px solid var(--border);
+      background: #FAFAFA;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .char-count { font-size: 11px; color: var(--text-3); }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 7px 14px;
+      border: none; border-radius: 8px;
+      font-size: 12px; font-weight: 600;
+      cursor: pointer; white-space: nowrap;
+      transition: all .15s;
+      font-family: inherit;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-h); }
+    .btn-ghost { background: none; border: 1px solid var(--border); color: var(--text); }
+    .btn-ghost:hover { background: var(--bg); border-color: #D1D5DB; }
+    .btn-ok { background: var(--ok-l); color: #065F46; border: 1px solid #A7F3D0; }
+    .btn-ok:hover { background: #D1FAE5; }
+    .btn-sm { padding: 5px 10px; font-size: 11px; }
+
+    /* ── Bottom action bar ── */
+    .action-bar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      z-index: 99;
+      box-shadow: 0 -4px 16px rgba(0,0,0,.06);
+    }
+    .action-bar-left { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-2); }
+    .action-bar-right { display: flex; gap: 8px; }
+
+    /* ── Version History ── */
+    .version-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+      box-shadow: var(--sh);
+    }
+    .ver-hdr {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      background: #FAFAFA;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .ver-body { padding: 18px; display: flex; flex-direction: column; gap: 20px; }
+
+    .ver-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 640px) { .ver-row { grid-template-columns: 1fr; } }
+
+    .ver-box {
+      border-radius: 9px;
+      border: 1.5px solid var(--border);
+      overflow: hidden;
+    }
+    .ver-box-hdr {
+      padding: 7px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .ver-box-hdr.v1 { background: var(--v1-l); color: var(--v1); border-bottom: 1.5px solid #FED7AA; }
+    .ver-box-hdr.v2 { background: var(--v2-l); color: var(--v2); border-bottom: 1.5px solid #C7D2FE; }
+    .ver-box pre {
+      padding: 12px;
+      font-size: 12px;
+      font-family: 'SFMono-Regular', 'Consolas', monospace;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--text);
+      background: var(--bg);
+    }
+
+    .change-note {
+      background: var(--base-l);
+      border: 1px solid var(--base-border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 12px;
+      color: #78350F;
+      line-height: 1.75;
+    }
+    .change-note strong { font-weight: 700; }
+
+    .full-prompt-section { display: flex; flex-direction: column; gap: 12px; }
+    .prompt-group-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-2);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      padding-bottom: 4px;
+      border-bottom: 1px solid var(--border);
+    }
+    .prompt-ref-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 12px;
+      font-family: 'SFMono-Regular', 'Consolas', monospace;
+      line-height: 1.75;
+      white-space: pre-wrap;
+      word-break: break-all;
+      position: relative;
+    }
+    .copy-btn-abs {
+      position: absolute;
+      top: 8px; right: 8px;
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed; bottom: 80px; left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: #1F2937; color: #fff;
+      font-size: 13px; padding: 9px 18px;
+      border-radius: 99px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.18);
+      opacity: 0; transition: all .22s;
+      z-index: 999; pointer-events: none; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    :focus-visible { outline: 3px solid rgba(99,102,241,.35); outline-offset: 2px; }
+
+    @media (max-width: 720px) {
+      #hdr { height: auto; min-height: 56px; padding: 10px 12px; flex-wrap: wrap; }
+      #page { padding: 16px 12px 120px; }
+      .action-bar { padding: 10px 12px; align-items: stretch; flex-direction: column; }
+      .action-bar-left { line-height: 1.5; }
+      .action-bar-right { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .action-bar-right .btn { justify-content: center; }
+      #toast { max-width: calc(100vw - 24px); white-space: normal; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div id="hdr">
+  <div class="hdr-left">
+    <div class="hdr-logo">📝 本地提示词<em>运营台</em></div>
+    <a href="index.html" class="back-link">← 返回创作台</a>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div id="save-indicator">✓ 已保存</div>
+    <span style="font-size:12px;color:var(--text-3);">修改后保存，仅对当前浏览器生效</span>
+  </div>
+</div>
+
+<!-- Page -->
+<div id="page">
+
+  <!-- ── 模板编辑区 ── -->
+  <div>
+    <div class="sec-hdr">
+      <div class="sec-title">提示词模板</div>
+      <span style="font-size:11px;color:var(--text-3);">用 <code style="background:var(--accent-l);color:var(--accent);padding:1px 5px;border-radius:3px;">{{占位符}}</code> 表示运行时动态插入的内容</span>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px;">
+
+      <!-- Card 1: 定基准·文字 -->
+      <div class="prompt-card">
+        <div class="card-title-bar">
+          <div class="card-icon">✏️</div>
+          <div>
+            <div class="card-title">定基准 · 文字描述模式</div>
+            <div class="card-desc">用户通过纯文字描述角色时使用。占位符会被用户输入的角色描述替换。</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="ph-row">
+            <span class="ph-badge">{{角色描述}} <span class="ph-note">← 用户输入的角色文字描述（必填）</span></span>
+          </div>
+          <textarea class="prompt-ta" id="ta-base-text" oninput="onInput('base-text',this)"></textarea>
+        </div>
+        <div class="card-footer">
+          <span class="char-count" id="cc-base-text">0 字</span>
+          <div style="display:flex;gap:7px;">
+            <button class="btn btn-ghost btn-sm" onclick="resetOne('base-text')">重置默认</button>
+            <button class="btn btn-ok btn-sm" onclick="copyPrompt('base-text')">📋 复制</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: 定基准·参考图 -->
+      <div class="prompt-card">
+        <div class="card-title-bar">
+          <div class="card-icon">🖼️</div>
+          <div>
+            <div class="card-title">定基准 · 参考图模式</div>
+            <div class="card-desc">用户上传参考图（可选附加文字说明）时使用。{{附加描述}} 在有补充文字时替换为「额外风格要求：…」，无文字时替换为空字符串。</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="ph-row">
+            <span class="ph-badge">{{附加描述}} <span class="ph-note">← 用户可选的补充文字（无则为空）</span></span>
+          </div>
+          <textarea class="prompt-ta" id="ta-base-img" oninput="onInput('base-img',this)"></textarea>
+        </div>
+        <div class="card-footer">
+          <span class="char-count" id="cc-base-img">0 字</span>
+          <div style="display:flex;gap:7px;">
+            <button class="btn btn-ghost btn-sm" onclick="resetOne('base-img')">重置默认</button>
+            <button class="btn btn-ok btn-sm" onclick="copyPrompt('base-img')">📋 复制</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3: 出表情 -->
+      <div class="prompt-card">
+        <div class="card-title-bar">
+          <div class="card-icon">✨</div>
+          <div>
+            <div class="card-title">出表情 · 表情生成模式</div>
+            <div class="card-desc">用户在已设定基准后，输入表情/动作指令时使用。每次调用只传入一个表情指令（多个连续指令已在前端拆分为多次调用）。</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="ph-row">
+            <span class="ph-badge">{{表情指令}} <span class="ph-note">← 单条表情或动作描述（如「生气瞪眼」）</span></span>
+          </div>
+          <textarea class="prompt-ta" id="ta-expr" rows="5" oninput="onInput('expr',this)"></textarea>
+        </div>
+        <div class="card-footer">
+          <span class="char-count" id="cc-expr">0 字</span>
+          <div style="display:flex;gap:7px;">
+            <button class="btn btn-ghost btn-sm" onclick="resetOne('expr')">重置默认</button>
+            <button class="btn btn-ok btn-sm" onclick="copyPrompt('expr')">📋 复制</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── 版本历史 ── -->
+  <div class="version-section">
+    <div class="ver-hdr">📋 版本历史 — 提示词迭代记录</div>
+    <div class="ver-body">
+
+      <!-- 说明 -->
+      <div class="change-note">
+        <strong>仅「出表情」提示词在 v1→v2 发生了变化。</strong><br>
+        「定基准（文字）」和「定基准（参考图）」两条提示词 v1 与 v2 完全相同，无需迭代。<br>
+        v2 改动原因：测试中出现三联拼图（连续指令触发）和手部崩坏（手指数量错误）两类问题。
+      </div>
+
+      <!-- 定基准·文字：v1=v2 -->
+      <div>
+        <div class="prompt-group-title">① 定基准 · 文字模式（v1 = v2，未变动）</div>
+        <div class="prompt-ref-box">
+          [角色描述]，IP 吉祥物插画，表情包风格，正方形构图，角色主体居中，纯白背景，无文字水印，正面视角，标准站姿，中性表情
+          <button class="btn btn-ghost btn-sm copy-btn-abs" onclick="copyText(this.previousSibling.textContent.trim())">📋</button>
+        </div>
+      </div>
+
+      <!-- 定基准·参考图：v1=v2 -->
+      <div>
+        <div class="prompt-group-title">② 定基准 · 参考图模式（v1 = v2，未变动）</div>
+        <div class="prompt-ref-box">
+          参考图中是一个 IP 角色形象，请生成同一角色的标准表情包图。严格保持角色的所有外观特征：脸型、颜色搭配、配饰细节、整体画风。构图：正方形，角色主体居中，纯白背景，无文字水印，正面视角。[额外风格要求：……（可选）]
+          <button class="btn btn-ghost btn-sm copy-btn-abs" onclick="copyText(this.previousSibling.textContent.trim())">📋</button>
+        </div>
+      </div>
+
+      <!-- 出表情：v1 vs v2 -->
+      <div>
+        <div class="prompt-group-title">③ 出表情 · 表情生成（v1 → v2 有改动）</div>
+        <div class="ver-row">
+          <div class="ver-box">
+            <div class="ver-box-hdr v1">🟠 V1 · 原始版本</div>
+            <pre>严格保持参考图中角色的所有外观特征不变（脸型、颜色、配饰、画风风格必须与参考图完全一致）。只改变本次的表情和动作：[表情指令]。构图：正方形，角色主体居中，纯白背景，无文字水印。</pre>
+          </div>
+          <div class="ver-box">
+            <div class="ver-box-hdr v2">🟣 V2 · 当前版本</div>
+            <pre>只生成一张独立的单图，画面中只有一个角色、一个表情动作，禁止拼图/九宫格/分镜/多格漫画/边框分割。严格保持参考图中角色的所有外观特征不变（脸型、颜色、配饰、画风必须与参考图完全一致）。本次只改变表情和动作：[表情指令]。如有手部，手指数量正确、结构自然。构图：正方形，角色主体居中，纯白背景，无文字无水印，正面或四分之三侧面视角。</pre>
+          </div>
+        </div>
+
+        <div class="change-note" style="margin-top:12px;">
+          <strong>V2 新增两条约束：</strong><br>
+          1. <strong>单图约束</strong>（首句）：「只生成一张独立的单图…禁止拼图/九宫格/分镜」
+          — 解决连续多个表情指令被模型画成拼图或只出第一张的问题（测试用例 P1-1）。<br>
+          2. <strong>手部约束</strong>：「如有手部，手指数量正确、结构自然」
+          — 解决比心/招手等动作手部崩坏（手指多余/缺失）的问题。<br>
+          前端已将多指令拆分为多次独立 API 调用，prompt 层只处理单指令，约束更精确。
+        </div>
+      </div>
+
+    </div><!-- /ver-body -->
+  </div><!-- /version-section -->
+
+</div><!-- /page -->
+
+<!-- Bottom Action Bar -->
+<div class="action-bar">
+  <div class="action-bar-left">
+    💡 本页配置保存在当前浏览器。保存后返回创作台刷新即可生效，不会同步给其他用户。
+  </div>
+  <div class="action-bar-right">
+    <button class="btn btn-ghost" onclick="exportJSON()">⬇️ 导出 JSON</button>
+    <button class="btn btn-ghost" onclick="importJSON()">⬆️ 导入 JSON</button>
+    <button class="btn btn-ghost" onclick="resetAll()">↺ 全部重置</button>
+    <button class="btn btn-primary" onclick="saveAll()">💾 保存所有提示词</button>
+  </div>
+</div>
+
+<!-- Hidden file input for import -->
+<input type="file" id="import-file" accept=".json" style="display:none" onchange="onImportFile(event)">
+
+<!-- Toast -->
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+// ════════════════════════════════════════
+//  CONSTANTS — must match index.html
+// ════════════════════════════════════════
+const PROMPT_KEY = 'ip-emoji-prompts';
+
+const DEFAULT_PROMPTS = {
+  baseText: '{{角色描述}}，IP 吉祥物插画，表情包风格，正方形构图，角色主体居中，纯白背景，无文字水印，正面视角，标准站姿，中性表情',
+  baseImg:  '参考图中是一个 IP 角色形象，请生成同一角色的标准表情包图。严格保持角色的所有外观特征：脸型、颜色搭配、配饰细节、整体画风。构图：正方形，角色主体居中，纯白背景，无文字水印，正面视角。{{附加描述}}',
+  expr:     '只生成一张独立的单图，画面中只有一个角色、一个表情动作，禁止拼图/九宫格/分镜/多格漫画/边框分割。严格保持参考图中角色的所有外观特征不变（脸型、颜色、配饰、画风必须与参考图完全一致）。本次只改变表情和动作：{{表情指令}}。如有手部，手指数量正确、结构自然。构图：正方形，角色主体居中，纯白背景，无文字无水印，正面或四分之三侧面视角。',
+};
+
+const REQUIRED_PLACEHOLDERS = {
+  baseText: '{{角色描述}}',
+  baseImg: '{{附加描述}}',
+  expr: '{{表情指令}}',
+};
+let isDirty = false;
+
+// Map between card keys and textarea/charcount IDs
+const KEY_MAP = {
+  'base-text': { ta: 'ta-base-text', cc: 'cc-base-text', field: 'baseText' },
+  'base-img':  { ta: 'ta-base-img',  cc: 'cc-base-img',  field: 'baseImg'  },
+  'expr':      { ta: 'ta-expr',      cc: 'cc-expr',      field: 'expr'     },
+};
+
+// ════════════════════════════════════════
+//  LOAD / SAVE
+// ════════════════════════════════════════
+function loadUserPrompts() {
+  try {
+    const saved = localStorage.getItem(PROMPT_KEY);
+    if (saved) return { ...DEFAULT_PROMPTS, ...JSON.parse(saved) };
+  } catch {}
+  return { ...DEFAULT_PROMPTS };
+}
+
+function saveUserPrompts(prompts) {
+  localStorage.setItem(PROMPT_KEY, JSON.stringify(prompts));
+}
+
+function getCurrentValues() {
+  return {
+    baseText: document.getElementById('ta-base-text').value,
+    baseImg:  document.getElementById('ta-base-img').value,
+    expr:     document.getElementById('ta-expr').value,
+  };
+}
+
+// ════════════════════════════════════════
+//  ACTIONS
+// ════════════════════════════════════════
+function saveAll() {
+  const vals = getCurrentValues();
+  const problem = validatePrompts(vals);
+  if (problem) { showToast(`⚠️ ${problem}`); return; }
+  saveUserPrompts(vals);
+  isDirty = false;
+  showSavedIndicator();
+  showToast('✓ 已保存到当前浏览器，创作台刷新后生效');
+}
+
+function resetAll() {
+  if (!confirm('将所有提示词重置为默认值？')) return;
+  localStorage.removeItem(PROMPT_KEY);
+  populateAll(DEFAULT_PROMPTS);
+  isDirty = true;
+  showToast('↺ 已重置为默认提示词');
+}
+
+function resetOne(key) {
+  const { ta, cc, field } = KEY_MAP[key];
+  document.getElementById(ta).value = DEFAULT_PROMPTS[field];
+  updateCC(ta, cc);
+  isDirty = true;
+  showToast(`↺「${labelOf(key)}」已重置为默认`);
+}
+
+function copyPrompt(key) {
+  const { ta } = KEY_MAP[key];
+  copyText(document.getElementById(ta).value);
+}
+
+function copyText(text) {
+  navigator.clipboard.writeText(text.trim()).then(() => {
+    showToast('📋 已复制到剪贴板');
+  }).catch(() => {
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = text.trim();
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('📋 已复制到剪贴板');
+  });
+}
+
+function exportJSON() {
+  const vals = getCurrentValues();
+  const blob = new Blob([JSON.stringify(vals, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  const objectUrl = URL.createObjectURL(blob);
+  a.href = objectUrl;
+  a.download = `ip-emoji-prompts-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(objectUrl);
+}
+
+function importJSON() {
+  document.getElementById('import-file').click();
+}
+
+function onImportFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 64 * 1024) { showToast('⚠️ 配置文件不能超过 64KB'); e.target.value = ''; return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!data || Array.isArray(data) || typeof data !== 'object') throw new Error('invalid');
+      for (const key of Object.keys(REQUIRED_PLACEHOLDERS)) {
+        if (key in data && typeof data[key] !== 'string') throw new Error('invalid');
+      }
+      const merged = { ...DEFAULT_PROMPTS, ...data };
+      const problem = validatePrompts(merged);
+      if (problem) throw new Error(problem);
+      populateAll(merged);
+      isDirty = true;
+      showToast('✓ 导入成功，请检查后点「保存」');
+    } catch (err) {
+      showToast(`⚠️ ${err.message && err.message !== 'invalid' ? err.message : 'JSON 格式有误，导入失败'}`);
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ════════════════════════════════════════
+//  UI HELPERS
+// ════════════════════════════════════════
+function onInput(key, ta) {
+  const { cc } = KEY_MAP[key];
+  updateCC(ta.id, cc);
+  isDirty = true;
+}
+
+function validatePrompts(prompts) {
+  for (const [field, token] of Object.entries(REQUIRED_PLACEHOLDERS)) {
+    const value = prompts[field];
+    if (typeof value !== 'string' || !value.trim()) return '提示词不能为空';
+    if (value.length > 5000) return '单条提示词不能超过 5000 字';
+    if (!value.includes(token)) return `“${field}”缺少必要占位符 ${token}`;
+  }
+  return '';
+}
+
+function updateCC(taId, ccId) {
+  const len = document.getElementById(taId).value.length;
+  document.getElementById(ccId).textContent = `${len} 字`;
+}
+
+function populateAll(prompts) {
+  document.getElementById('ta-base-text').value = prompts.baseText || '';
+  document.getElementById('ta-base-img').value  = prompts.baseImg  || '';
+  document.getElementById('ta-expr').value      = prompts.expr     || '';
+  Object.keys(KEY_MAP).forEach(k => {
+    const { ta, cc } = KEY_MAP[k];
+    updateCC(ta, cc);
+  });
+}
+
+function labelOf(key) {
+  return { 'base-text': '定基准·文字', 'base-img': '定基准·参考图', 'expr': '出表情' }[key];
+}
+
+let siTimer;
+function showSavedIndicator() {
+  const el = document.getElementById('save-indicator');
+  el.classList.add('show');
+  clearTimeout(siTimer);
+  siTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════
+populateAll(loadUserPrompts());
+window.addEventListener('beforeunload', e => {
+  if (!isDirty) return;
+  e.preventDefault();
+  e.returnValue = '';
+});
+</script>
+</body>
+</html>
