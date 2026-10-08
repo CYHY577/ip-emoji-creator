@@ -1,0 +1,14 @@
+{
+  "name": "ip-emoji-generation-service",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tencent SCF Web Function proxy for the IP emoji creator",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --check server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
+
