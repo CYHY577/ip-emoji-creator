@@ -1,0 +1,13 @@
+{
+  "environmentId": "canva-compliance-d5ei361c3908589",
+  "region": "ap-shanghai",
+  "functionName": "ip-emoji-generation",
+  "functionId": "lam-mse713ih",
+  "apiBaseUrl": "https://canva-compliance-d5ei361c3908589-1481713767.ap-shanghai.app.tcloudbase.com/ip-emoji-api",
+  "frontendAppName": "ip-emoji-creator",
+  "frontendPath": "/ip-emoji",
+  "secretStorage": "CloudBase function environment variables",
+  "operationsStorage": "browser localStorage",
+  "functionHealthVerified": true,
+  "frontendVerified": true
+}
